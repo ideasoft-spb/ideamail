@@ -13,7 +13,6 @@ import email
 from string import ascii_letters, digits, punctuation
 from PyQt5 import QtWidgets, QtGui, QtCore
 
-
 # Needed to increase IMAP requests amount
 imaplib._MAXLINE = 1000000000
 
@@ -39,12 +38,14 @@ class LoginWindow(QtWidgets.QDialog):
 
     def exec_(self):
         super(LoginWindow, self).exec_()
-        return (self.login_input.text(), self.password_input.text(), self.box.currentText())
+        return self.login_input.text(), self.password_input.text(), self.box.currentText()
 
 
 class ChecklistWidget(QtWidgets.QWidget):
-    def __init__(self, stringlist=[], checked=False, parent=None):
+    def __init__(self, stringlist=None, checked=False, parent=None):
         super(ChecklistWidget, self).__init__(parent)
+        if stringlist is None:
+            stringlist = []
         self.setup()
         self.data = {}
         self.addNewElements(stringlist)
@@ -53,23 +54,17 @@ class ChecklistWidget(QtWidgets.QWidget):
         self.model = QtGui.QStandardItemModel()
         self.listView = QtWidgets.QListView()
         self.listView.setModel(self.model)
-        self.selectButton = QtWidgets.QPushButton('Select all')
-        self.unselectButton = QtWidgets.QPushButton('Unselect all')
         hbox = QtWidgets.QHBoxLayout()
-        hbox.addWidget(self.selectButton)
-        hbox.addWidget(self.unselectButton)
         vbox = QtWidgets.QVBoxLayout(self)
         vbox.addWidget(self.listView)
         vbox.addLayout(hbox)
-        self.selectButton.clicked.connect(self.select)
-        self.unselectButton.clicked.connect(self.unselect)
 
-    def getSelectedIndexes(self)-> list:
+    def get_selected_indexes(self) -> list:
         self.refresh_data()
         items = list(self.data.items())
         return [i for i in range(len(items)) if items[i][1]]
 
-    def getSelected(self)-> list:
+    def get_selected(self) -> list:
         self.refresh_data()
         return [key for key in self.data if self.data[key]]
 
@@ -109,11 +104,12 @@ class ChecklistWidget(QtWidgets.QWidget):
             self.model.appendRow(item)
 
     def refresh_data(self):
-        self.data = {self.model.item(i).text(): (True if self.model.item(i).checkState() == QtCore.Qt.Checked else False)
-        for i in range(self.model.rowCount())}
+        self.data = {
+            self.model.item(i).text(): (True if self.model.item(i).checkState() == QtCore.Qt.Checked else False)
+            for i in range(self.model.rowCount())}
 
     def deleteSelected(self, function=None):
-        indexes = self.getSelectedIndexes()
+        indexes = self.get_selected_indexes()
         while indexes:
             i = indexes.pop(0)
             if function: function(self.model.item(i))
@@ -133,39 +129,41 @@ class NewMessageWindow(QtWidgets.QMainWindow):
         self.initContacts()
 
     def setup(self):
-        # central -> hbox -> vbox  -> QLabel, self.reciever, contactsbtn, QLabel, self.subject, QLabel, self.body_type, QLabel, self.body, sendbtn
-        #                    vbox2 -> QLabel, self.fileChooseWidget, (hbox2 -> addbtn, deletebtn)
-
+        """Sets widgets and layouts."""
         central = QtWidgets.QWidget()
         vbox = QtWidgets.QVBoxLayout()
         vbox2 = QtWidgets.QVBoxLayout()
         hbox = QtWidgets.QHBoxLayout()
-        sendbtn = QtWidgets.QPushButton("Send")
-        self.reciever = QtWidgets.QComboBox()
-        contactsbtn = QtWidgets.QPushButton("Refresh contacts")
+        send_button = QtWidgets.QPushButton("Send")
+        self.receiver = QtWidgets.QComboBox()
+        contacts_button = QtWidgets.QPushButton("Refresh contacts")
         self.subject = QtWidgets.QLineEdit()
         self.body_type = QtWidgets.QComboBox()
         self.body = QtWidgets.QTextEdit()
-        addbtn = QtWidgets.QPushButton("Add file")
-        deletebtn = QtWidgets.QPushButton("Remove selected")
-        hbox2 = QtWidgets.QHBoxLayout()
+        add_button = QtWidgets.QPushButton("Add file")
+        delete_button = QtWidgets.QPushButton("Remove selected")
+        select_button = QtWidgets.QPushButton("Select all")
+        unselect_button = QtWidgets.QPushButton("Unselect all")
+        grid = QtWidgets.QGridLayout()
         self.fileChooseWidget = ChecklistWidget()
 
-        hbox2.addWidget(addbtn)
-        hbox2.addWidget(deletebtn)
+        grid.addWidget(add_button, 0, 0)
+        grid.addWidget(delete_button, 0, 1)
+        grid.addWidget(select_button, 1, 0)
+        grid.addWidget(unselect_button, 1, 1)
         vbox2.addWidget(QtWidgets.QLabel("Attachments"))
         vbox2.addWidget(self.fileChooseWidget)
-        vbox2.addLayout(hbox2)
-        vbox.addWidget(QtWidgets.QLabel("Reciever"))
-        vbox.addWidget(self.reciever)
-        vbox.addWidget(contactsbtn)
+        vbox2.addLayout(grid)
+        vbox.addWidget(QtWidgets.QLabel("Receiver"))
+        vbox.addWidget(self.receiver)
+        vbox.addWidget(contacts_button)
         vbox.addWidget(QtWidgets.QLabel("Subject"))
         vbox.addWidget(self.subject)
         vbox.addWidget(QtWidgets.QLabel("Text type"))
         vbox.addWidget(self.body_type)
         vbox.addWidget(QtWidgets.QLabel("Email text"))
         vbox.addWidget(self.body)
-        vbox.addWidget(sendbtn)
+        vbox.addWidget(send_button)
         hbox.addLayout(vbox)
         hbox.addLayout(vbox2)
         central.setLayout(hbox)
@@ -173,17 +171,19 @@ class NewMessageWindow(QtWidgets.QMainWindow):
 
         self.body_type.addItems(["Plain", "HTML"])
 
-        contactsbtn.clicked.connect(self.refreshContacts)
-        deletebtn.clicked.connect(self.deleteSelected)
-        addbtn.clicked.connect(self.selectFile)
-        sendbtn.clicked.connect(self.sendEmail)
+        contacts_button.clicked.connect(self.refreshContacts)
+        delete_button.clicked.connect(self.deleteSelected)
+        add_button.clicked.connect(self.selectFile)
+        send_button.clicked.connect(self.sendEmail)
+        select_button.clicked.connect(self.fileChooseWidget.select)
+        unselect_button.clicked.connect(self.fileChooseWidget.unselect)
 
     def refreshContacts(self):
-        self.reciever.clear()
-        self.reciever.addItems(self.parent.contacts)
+        self.receiver.clear()
+        self.receiver.addItems(self.parent.contacts)
 
     def initContacts(self):
-        self.reciever.addItems(list(self.parent.contacts.keys()))
+        self.receiver.addItems(list(self.parent.contacts.keys()))
 
     def selectFile(self):
         file = QtWidgets.QFileDialog.getOpenFileName()
@@ -207,17 +207,17 @@ class NewMessageWindow(QtWidgets.QMainWindow):
             body = self.body.toPlainText()
         subject = self.subject.text()
         files = self.files
-        reciever = self.reciever.currentText()
+        receiver = self.receiver.currentText()
         message = email.mime.multipart.MIMEMultipart("alternative")
         message["Subject"] = subject
-        message["To"] = self.parent.contacts[reciever]
+        message["To"] = self.parent.contacts[receiver]
         message["From"] = self.parent.USERNAME
         if body_type == "HTML":
             body = email.mime.text.MIMEText(body, "html")
         else:
             body = email.mime.text.MIMEText(body, "plain")
         message.attach(body)
-        self.parent.smtpSession.sendmail(self.parent.USERNAME, self.parent.contacts[reciever], message.as_string())
+        self.parent.smtpSession.sendmail(self.parent.USERNAME, self.parent.contacts[receiver], message.as_string())
 
 
 class AddContactDialog(QtWidgets.QDialog):
@@ -228,7 +228,7 @@ class AddContactDialog(QtWidgets.QDialog):
         self.setWindowTitle("New contact")
 
     def setup(self):
-        # vbox -> QLabel, self.name, QLabel, self.email, hbox -> okbtn, cancelbtn
+        """Sets widgets and layouts."""
         vbox = QtWidgets.QVBoxLayout()
         self.name = QtWidgets.QLineEdit()
         self.email = QtWidgets.QLineEdit()
@@ -271,27 +271,26 @@ class ContactsWindow(QtWidgets.QMainWindow):
         self.contacts_list.addNewElements(self.contacts)
 
     def setup(self):
-        # central -> vbox -> ChecklistWidget, grid -> deletebtn, addbtn, importbtn, exportbtn
         central = QtWidgets.QWidget()
         vbox = QtWidgets.QVBoxLayout()
         self.contacts_list = ChecklistWidget()
         grid = QtWidgets.QGridLayout()
-        deletebtn = QtWidgets.QPushButton("Delete")
-        addbtn = QtWidgets.QPushButton("Add")
-        importbtn = QtWidgets.QPushButton("Import")
-        exportbtn = QtWidgets.QPushButton("Export")
+        delete_button = QtWidgets.QPushButton("Delete")
+        add_button = QtWidgets.QPushButton("Add")
+        import_button = QtWidgets.QPushButton("Import")
+        export_button = QtWidgets.QPushButton("Export")
 
-        grid.addWidget(addbtn, 0, 0)
-        grid.addWidget(deletebtn, 0, 1)
-        grid.addWidget(importbtn, 1, 0)
-        grid.addWidget(exportbtn, 1, 1)
+        grid.addWidget(add_button, 0, 0)
+        grid.addWidget(delete_button, 0, 1)
+        grid.addWidget(import_button, 1, 0)
+        grid.addWidget(export_button, 1, 1)
         vbox.addWidget(self.contacts_list)
         vbox.addLayout(grid)
         central.setLayout(vbox)
         self.setCentralWidget(central)
 
-        addbtn.clicked.connect(self.addContact)
-        deletebtn.clicked.connect(self.deleteSelected)
+        add_button.clicked.connect(self.addContact)
+        delete_button.clicked.connect(self.deleteSelected)
 
     def addContact(self):
         d = AddContactDialog(parent=self)
@@ -331,6 +330,7 @@ class FoldersWindow(QtWidgets.QMainWindow):
 
         self.setCentralWidget(central)
 
+
 class MessagesWindow(QtWidgets.QMainWindow):
     def __init__(self, parent=None):
         QtWidgets.QWidget.__init__(self, parent)
@@ -341,16 +341,17 @@ class MessagesWindow(QtWidgets.QMainWindow):
             try:
                 config = configparser.RawConfigParser()
                 config.read('.ideamail.ini')
-                pyAesCrypt.decryptFile('.ideamail.data.encr', '.ideamail.data', config['IdeaMail']['Password'], 1024*64)
+                pyAesCrypt.decryptFile('.ideamail.data.encr', '.ideamail.data', config['IdeaMail']['Password'],
+                                       1024 * 64)
                 os.remove('.ideamail.data.encr')
                 with open('.ideamail.data', 'br') as f:
                     data = pickle.load(f)
                 self.USERNAME = data.get("USERNAME")
                 self.PASSWORD = data.get("PASSWORD")
-                self.MAILHOST = data.get("HOST")
+                self.MAIL_HOST = data.get("HOST")
                 self.data = data.get("DATA")
                 self.contacts = data.get("CONTACTS")
-                self.serverLogin(self.USERNAME, self.PASSWORD, self.MAILHOST)
+                self.serverLogin(self.USERNAME, self.PASSWORD, self.MAIL_HOST)
             except:
                 self.showLoginDialog()
                 self.createConfig()
@@ -378,15 +379,16 @@ class MessagesWindow(QtWidgets.QMainWindow):
             subject = self.data[i].subject
             self.addSubjectToModel(subject)
 
-    def serverLogin(self, username, password, mailhost):
-        self.smtpSession = smtplib.SMTP('smtp.{}.com'.format(self.MAILHOST.lower()), 587)
+    def serverLogin(self, username, password, mail_host):
+        self.smtpSession = smtplib.SMTP('smtp.{}.com'.format(mail_host.lower()), 587)
         self.smtpSession.starttls()
-        self.imapSession = imapclient.IMAPClient('imap.{}.com'.format(self.MAILHOST.lower()), ssl=True)
+        self.imapSession = imapclient.IMAPClient('imap.{}.com'.format(mail_host.lower()), ssl=True)
         try:
             self.smtpSession.login(self.USERNAME, self.PASSWORD)
             self.imapSession.login(self.USERNAME, self.PASSWORD)
         except:
-            errorWindow = QtWidgets.QMessageBox.critical(self, "Login error", "Check that login and password are valid.")
+            error_window = QtWidgets.QMessageBox.critical(self, "Login error",
+                                                         "Check that login and password are valid.")
             self.showLoginDialog()
 
     def showLoginDialog(self):
@@ -394,8 +396,8 @@ class MessagesWindow(QtWidgets.QMainWindow):
         loginDialog.show()
         out = loginDialog.exec_()
         if all(out[0:1]):
-            self.USERNAME, self.PASSWORD, self.MAILHOST = out
-            self.serverLogin(self.USERNAME, self.PASSWORD, self.MAILHOST)
+            self.USERNAME, self.PASSWORD, self.MAIL_HOST = out
+            self.serverLogin(self.USERNAME, self.PASSWORD, self.MAIL_HOST)
         else:
             self.deleteLater()
 
@@ -403,11 +405,11 @@ class MessagesWindow(QtWidgets.QMainWindow):
         password = ''.join(secrets.choice(ascii_letters + punctuation + digits) for i in range(20))
         data = {'USERNAME': self.USERNAME,
                 'PASSWORD': self.PASSWORD,
-                "HOST": self.MAILHOST,
+                "HOST": self.MAIL_HOST,
                 'DATA': self.data,
                 "CONTACTS": self.contacts}
         config = configparser.RawConfigParser()
-        config['IdeaMail'] = {"Password":password}
+        config['IdeaMail'] = {"Password": password}
         with open('.ideamail.ini', 'w') as f:
             config.write(f)
         with open(".ideamail.data", "bw") as f:
@@ -416,17 +418,12 @@ class MessagesWindow(QtWidgets.QMainWindow):
         os.remove('.ideamail.data')
 
     def createMainLayout(self):
-        # Window
-        # centralwidget -> vbox -> listview, hbox
-        # menubar -> fileMenu -> logoutAction, exitAction
-        # toolbar -> folderSelectAction, newMessageAction, refreshAction, contactsAction
-        # self.statusbar
         # TODO: replace QListView with my checkable ListView widget
         hbox = QtWidgets.QHBoxLayout()
         listview = QtWidgets.QListView()
         vbox = QtWidgets.QVBoxLayout()
         centralwidget = QtWidgets.QWidget()
-        self.model = QtGui.QStandardItemModel() # ItemModel for QListView
+        self.model = QtGui.QStandardItemModel()  # ItemModel for QListView
         toolbar = self.addToolBar("Main")
         menubar = self.menuBar()
         fileMenu = menubar.addMenu('Почта')
@@ -438,7 +435,7 @@ class MessagesWindow(QtWidgets.QMainWindow):
         contactsAction = QtWidgets.QAction(QtGui.QIcon("icons/contacts.png"), "Open contacts", self)
 
         listview.setModel(self.model)
-        listview.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers) # Text in listview can't be edited
+        listview.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)  # Text in listview can't be edited
         vbox.addWidget(listview)
         vbox.addLayout(hbox)
         self.setCentralWidget(centralwidget)
@@ -481,7 +478,8 @@ class MessagesWindow(QtWidgets.QMainWindow):
         try:
             os.remove('.ideamail.data')
             os.remove('.ideamail.ini')
-        except: pass
+        except:
+            pass
         self.deleteLater()
 
     def getMessages(self):
@@ -506,20 +504,22 @@ class MessagesWindow(QtWidgets.QMainWindow):
                 indicator.setValue(length)
                 break
 
-            msgid, data = list(self.imapSession.fetch([i], ['ENVELOPE']).items())[0]
+            message_uid, data = list(self.imapSession.fetch([i], ['ENVELOPE']).items())[0]
             envelope = data[b'ENVELOPE']
             self.data[i] = envelope
             subject = envelope.subject
             self.addSubjectToModel(subject)
 
     def closeEvent(self, event):
-        reply = QtWidgets.QMessageBox.question(self, "Exit", "Are you sure you want to exit?", QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
+        reply = QtWidgets.QMessageBox.question(self, "Exit", "Are you sure you want to exit?",
+                                               QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
         if reply == QtWidgets.QMessageBox.Yes:
             try:
                 self.createConfig()
                 self.imapSession.logout()
                 self.smtpSession.close()
-            except: pass
+            except:
+                pass
             event.accept()
         else:
             event.ignore()
