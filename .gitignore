@@ -129,3 +129,4 @@ dmypy.json
 .pyre/
 .ideamail.data.encr
 .ideamail.ini
+.idea

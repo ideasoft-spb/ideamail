@@ -42,13 +42,15 @@ class LoginWindow(QtWidgets.QDialog):
 
 
 class ChecklistWidget(QtWidgets.QWidget):
-    def __init__(self, stringlist=None, checked=False, parent=None):
+    def __init__(self, stringlist=None, checked=False, parent=None, editable=False):
         super(ChecklistWidget, self).__init__(parent)
         if stringlist is None:
             stringlist = []
         self.setup()
         self.data = {}
         self.addNewElements(stringlist)
+        if not editable:
+            self.listView.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
 
     def setup(self):
         self.model = QtGui.QStandardItemModel()
@@ -141,14 +143,16 @@ class NewMessageWindow(QtWidgets.QMainWindow):
         self.body_type = QtWidgets.QComboBox()
         self.body = QtWidgets.QTextEdit()
         add_button = QtWidgets.QPushButton("Add file")
-        delete_button = QtWidgets.QPushButton("Remove selected")
+        delete_button = QtWidgets.QPushButton("Remove")
+        rename_button = QtWidgets.QPushButton("Rename")
         select_button = QtWidgets.QPushButton("Select all")
         unselect_button = QtWidgets.QPushButton("Unselect all")
         grid = QtWidgets.QGridLayout()
         self.fileChooseWidget = ChecklistWidget()
 
         grid.addWidget(add_button, 0, 0)
-        grid.addWidget(delete_button, 0, 1)
+        grid.addWidget(rename_button, 0, 1)
+        grid.addWidget(delete_button, 0, 2)
         grid.addWidget(select_button, 1, 0)
         grid.addWidget(unselect_button, 1, 1)
         vbox2.addWidget(QtWidgets.QLabel("Attachments"))
@@ -174,9 +178,21 @@ class NewMessageWindow(QtWidgets.QMainWindow):
         contacts_button.clicked.connect(self.refreshContacts)
         delete_button.clicked.connect(self.deleteSelected)
         add_button.clicked.connect(self.selectFile)
+        rename_button.clicked.connect(self.rename)
         send_button.clicked.connect(self.sendEmail)
         select_button.clicked.connect(self.fileChooseWidget.select)
         unselect_button.clicked.connect(self.fileChooseWidget.unselect)
+
+    def rename(self):
+        default = self.fileChooseWidget.get_selected()
+        if default: default = default[0]
+        text, ok = QtWidgets.QInputDialog.getText(self, "Rename file", "Enter a new filename with format", text=default)
+        if ok:
+            del self.fileChooseWidget.data[default]
+            key = self.search_key(default)
+            self.files[key] = text
+            self.fileChooseWidget.data[text] = True
+            self.fileChooseWidget.refresh()
 
     def refreshContacts(self):
         self.receiver.clear()
@@ -199,6 +215,12 @@ class NewMessageWindow(QtWidgets.QMainWindow):
                 del self.files[i]
                 break
 
+    def search_key(self, text):
+        for i in self.files:
+            if self.files[i] == text:
+                return i
+        return None
+
     def sendEmail(self):
         body_type = self.body_type.currentText()
         if body_type == "HTML":
@@ -217,7 +239,11 @@ class NewMessageWindow(QtWidgets.QMainWindow):
         else:
             body = email.mime.text.MIMEText(body, "plain")
         message.attach(body)
-        self.parent.smtpSession.sendmail(self.parent.USERNAME, self.parent.contacts[receiver], message.as_string())
+        dialog = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Question, "Confirm sending", "Are you sure you want to send an email?",
+            buttons=QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, parent=self)
+        dialog.setDefaultButton(QtWidgets.QMessageBox.Yes)
+        if dialog.exec_() == QtWidgets.QMessageBox.Yes:
+            self.parent.smtpSession.sendmail(self.parent.USERNAME, self.parent.contacts[receiver], message.as_string())
 
 
 class AddContactDialog(QtWidgets.QDialog):
