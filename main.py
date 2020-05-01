@@ -12,6 +12,7 @@ import secrets
 import email
 from string import ascii_letters, digits, punctuation
 from PyQt5 import QtWidgets, QtGui, QtCore
+from email.mime.application import MIMEApplication
 
 # Needed to increase IMAP requests amount
 imaplib._MAXLINE = 1000000000
@@ -239,6 +240,15 @@ class NewMessageWindow(QtWidgets.QMainWindow):
         else:
             body = email.mime.text.MIMEText(body, "plain")
         message.attach(body)
+        for file in self.files:
+            try:
+                with open(file, "rb") as f:
+                    content = f.read()
+                attach_file = MIMEApplication(content)
+                attach_file.add_header('Content-Disposition', 'attachment', filename=self.files[file])
+                message.attach(attach_file)
+            except Exception as e:
+                print(e)
         dialog = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Question, "Confirm sending", "Are you sure you want to send an email?",
             buttons=QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, parent=self)
         dialog.setDefaultButton(QtWidgets.QMessageBox.Yes)
@@ -452,9 +462,9 @@ class MessagesWindow(QtWidgets.QMainWindow):
         self.model = QtGui.QStandardItemModel()  # ItemModel for QListView
         toolbar = self.addToolBar("Main")
         menubar = self.menuBar()
-        fileMenu = menubar.addMenu('Почта')
+        fileMenu = menubar.addMenu('Mail')
         logoutAction = QtWidgets.QAction(QtGui.QIcon("icons/logout.png"), 'Log out', self)
-        exitAction = QtWidgets.QAction(QtGui.QIcon("icons/close.png"), 'Выход', self)
+        exitAction = QtWidgets.QAction(QtGui.QIcon("icons/close.png"), 'Exit', self)
         folderSelectAction = QtWidgets.QAction(QtGui.QIcon("icons/folder.png"), "Folder selecting", self)
         newMessageAction = QtWidgets.QAction(QtGui.QIcon("icons/new_message.png"), "New email", self)
         refreshAction = QtWidgets.QAction(QtGui.QIcon("icons/refresh.png"), "Refresh inbox", self)
