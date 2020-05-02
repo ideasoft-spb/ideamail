@@ -119,7 +119,7 @@ class ChecklistWidget(QtWidgets.QWidget):
 class NewMessageWindow(QtWidgets.QMainWindow):
     def __init__(self, parent=None):
         QtWidgets.QWidget.__init__(self, parent)
-        self.setWindowIcon(QtGui.QIcon("logo.png"))
+        self.setWindowIcon(QtGui.QIcon("icons/logo.png"))
         self.setWindowTitle("New message")
         self.setup()
         self.parent = parent
@@ -446,12 +446,12 @@ class MessagesWindow(QtWidgets.QMainWindow):
         toolbar = self.addToolBar("Main")
         menubar = self.menuBar()
         fileMenu = menubar.addMenu('Mail')
-        logoutAction = QtWidgets.QAction(QtGui.QIcon("logout.png"), 'Log out', self)
-        exitAction = QtWidgets.QAction(QtGui.QIcon("close.png"), 'Exit', self)
-        folderSelectAction = QtWidgets.QAction(QtGui.QIcon("folder.png"), "Folder selecting", self)
-        newMessageAction = QtWidgets.QAction(QtGui.QIcon("new_message.png"), "New email", self)
-        refreshAction = QtWidgets.QAction(QtGui.QIcon("refresh.png"), "Refresh inbox", self)
-        contactsAction = QtWidgets.QAction(QtGui.QIcon("contacts.png"), "Open contacts", self)
+        logoutAction = QtWidgets.QAction(QtGui.QIcon("icons/logout.png"), 'Log out', self)
+        exitAction = QtWidgets.QAction(QtGui.QIcon("icons/close.png"), 'Exit', self)
+        folderSelectAction = QtWidgets.QAction(QtGui.QIcon("icons/folder.png"), "Folder selecting", self)
+        newMessageAction = QtWidgets.QAction(QtGui.QIcon("icons/new_message.png"), "New email", self)
+        refreshAction = QtWidgets.QAction(QtGui.QIcon("icons/refresh.png"), "Refresh inbox", self)
+        contactsAction = QtWidgets.QAction(QtGui.QIcon("icons/contacts.png"), "Open contacts", self)
 
         listview.setModel(self.model)
         listview.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)  # Text in listview can't be edited
@@ -548,6 +548,6 @@ if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     window = MessagesWindow()
     window.resize(400, 400)
-    window.setWindowIcon(QtGui.QIcon("logo.png"))
+    window.setWindowIcon(QtGui.QIcon("icons/logo.png"))
     window.show()
     sys.exit(app.exec_())
