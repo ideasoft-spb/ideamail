@@ -4,13 +4,8 @@ import sys
 import smtplib
 import imaplib
 import pickle
-import configparser
 import base64
 import os
-import pyAesCrypt
-import secrets
-import email
-from string import ascii_letters, digits, punctuation
 from PyQt5 import QtWidgets, QtGui, QtCore
 from email.mime.application import MIMEApplication
 
@@ -124,7 +119,7 @@ class ChecklistWidget(QtWidgets.QWidget):
 class NewMessageWindow(QtWidgets.QMainWindow):
     def __init__(self, parent=None):
         QtWidgets.QWidget.__init__(self, parent)
-        self.setWindowIcon(QtGui.QIcon("icons/logo.png"))
+        self.setWindowIcon(QtGui.QIcon("logo.png"))
         self.setWindowTitle("New message")
         self.setup()
         self.parent = parent
@@ -373,13 +368,8 @@ class MessagesWindow(QtWidgets.QMainWindow):
         self.setWindowTitle("Login")
         self.data = {}
         self.contacts = {}
-        if os.path.isfile('.ideamail.ini') and os.path.isfile(".ideamail.data.encr"):
+        if os.path.isfile(".ideamail.data"):
             try:
-                config = configparser.RawConfigParser()
-                config.read('.ideamail.ini')
-                pyAesCrypt.decryptFile('.ideamail.data.encr', '.ideamail.data', config['IdeaMail']['Password'],
-                                       1024 * 64)
-                os.remove('.ideamail.data.encr')
                 with open('.ideamail.data', 'br') as f:
                     data = pickle.load(f)
                 self.USERNAME = data.get("USERNAME")
@@ -438,20 +428,13 @@ class MessagesWindow(QtWidgets.QMainWindow):
             self.deleteLater()
 
     def createConfig(self):
-        password = ''.join(secrets.choice(ascii_letters + punctuation + digits) for i in range(20))
         data = {'USERNAME': self.USERNAME,
                 'PASSWORD': self.PASSWORD,
                 "HOST": self.MAIL_HOST,
                 'DATA': self.data,
                 "CONTACTS": self.contacts}
-        config = configparser.RawConfigParser()
-        config['IdeaMail'] = {"Password": password}
-        with open('.ideamail.ini', 'w') as f:
-            config.write(f)
         with open(".ideamail.data", "bw") as f:
             pickle.dump(data, f)
-        pyAesCrypt.encryptFile('.ideamail.data', '.ideamail.data.encr', password, 1024 * 64)
-        os.remove('.ideamail.data')
 
     def createMainLayout(self):
         # TODO: replace QListView with my checkable ListView widget
@@ -463,12 +446,12 @@ class MessagesWindow(QtWidgets.QMainWindow):
         toolbar = self.addToolBar("Main")
         menubar = self.menuBar()
         fileMenu = menubar.addMenu('Mail')
-        logoutAction = QtWidgets.QAction(QtGui.QIcon("icons/logout.png"), 'Log out', self)
-        exitAction = QtWidgets.QAction(QtGui.QIcon("icons/close.png"), 'Exit', self)
-        folderSelectAction = QtWidgets.QAction(QtGui.QIcon("icons/folder.png"), "Folder selecting", self)
-        newMessageAction = QtWidgets.QAction(QtGui.QIcon("icons/new_message.png"), "New email", self)
-        refreshAction = QtWidgets.QAction(QtGui.QIcon("icons/refresh.png"), "Refresh inbox", self)
-        contactsAction = QtWidgets.QAction(QtGui.QIcon("icons/contacts.png"), "Open contacts", self)
+        logoutAction = QtWidgets.QAction(QtGui.QIcon("logout.png"), 'Log out', self)
+        exitAction = QtWidgets.QAction(QtGui.QIcon("close.png"), 'Exit', self)
+        folderSelectAction = QtWidgets.QAction(QtGui.QIcon("folder.png"), "Folder selecting", self)
+        newMessageAction = QtWidgets.QAction(QtGui.QIcon("new_message.png"), "New email", self)
+        refreshAction = QtWidgets.QAction(QtGui.QIcon("refresh.png"), "Refresh inbox", self)
+        contactsAction = QtWidgets.QAction(QtGui.QIcon("contacts.png"), "Open contacts", self)
 
         listview.setModel(self.model)
         listview.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)  # Text in listview can't be edited
@@ -565,6 +548,6 @@ if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     window = MessagesWindow()
     window.resize(400, 400)
-    window.setWindowIcon(QtGui.QIcon("icons/logo.png"))
+    window.setWindowIcon(QtGui.QIcon("logo.png"))
     window.show()
     sys.exit(app.exec_())
