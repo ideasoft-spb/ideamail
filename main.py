@@ -6,6 +6,7 @@ import imaplib
 import pickle
 import base64
 import os
+import email
 from PyQt5 import QtWidgets, QtGui, QtCore
 from email.mime.application import MIMEApplication
 
@@ -368,6 +369,7 @@ class MessagesWindow(QtWidgets.QMainWindow):
         self.setWindowTitle("Login")
         self.data = {}
         self.contacts = {}
+        self.folder = "INBOX"
         if os.path.isfile(".ideamail.data"):
             try:
                 with open('.ideamail.data', 'br') as f:
@@ -388,6 +390,13 @@ class MessagesWindow(QtWidgets.QMainWindow):
         self.createMainLayout()
         self.setWindowTitle("My messages")
         self.loadMessagesFromData()
+
+    def openFolderDialog(self):
+        self.folders = [i[2] for i in self.imapSession.list_folders() if i[2] != "[Gmail]"]
+        d = QtWidgets.QInputDialog.getItem(self, "Folder selection", "Choose a folder/label to show.", 
+        self.folders, editable=False)
+        if d[1]:
+            self.folder = d[0]
 
     def addSubjectToModel(self, subject):
         if subject:
@@ -482,6 +491,7 @@ class MessagesWindow(QtWidgets.QMainWindow):
         newMessageAction.triggered.connect(self.newMessage)
         refreshAction.triggered.connect(self.getMessages)
         contactsAction.triggered.connect(self.openContacts)
+        folderSelectAction.triggered.connect(self.openFolderDialog)
 
     def openContacts(self):
         self.contactsWindow = ContactsWindow(parent=self)
@@ -504,7 +514,7 @@ class MessagesWindow(QtWidgets.QMainWindow):
     def getMessages(self):
         self.model.clear()
         self.data = {}
-        self.imapSession.select_folder('INBOX', readonly=0)
+        self.imapSession.select_folder(self.folder, readonly=0)
         UIDS = self.imapSession.search(['ALL'])
         UIDS.reverse()
         length = len(UIDS)
