@@ -134,8 +134,11 @@ class Message(object):
         )
 
     @property
-    def date(self):
+    def date(self, fmt=None):
         return str(self.datetime)
+
+    def get_date(self, fmt):
+        return self.datetime.strftime(fmt)
 
     def __str__(self):
         return self.__repr__()

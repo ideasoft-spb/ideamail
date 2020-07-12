@@ -11,6 +11,7 @@ import checklistwidget
 
 SERVICE = None
 PER_QUERY: int = 35
+DATA_PATH: str = os.path.join(".data", "data.json")
 
 
 class AttachmentsWidget(QtWidgets.QWidget):
@@ -224,24 +225,28 @@ class MainWindow(QtWidgets.QMainWindow):
         self.login()
         self.data: Dict[str, dict] = {}
         self.base: Dict[str, dict] = {}
-        if os.path.isfile('data.json'):
+        if os.path.isfile(DATA_PATH):
             self.load_data()
         else:
             self.save_data()
         self.setup()
 
     def load_data(self):
-        with open("data.json", "r") as f:
+        with open(DATA_PATH, "r") as f:
             self.base = json.load(f)
 
     def save_data(self):
-        with open("data.json", "w") as f:
+        with open(DATA_PATH, "w") as f:
             json.dump(self.base, f, indent=4)
 
     def add_message_data(self, uid: int):
         message = easygmail.Message(id=uid)
         keys = ['subject', 'sender', 'sender_email', 'date', 'labels']
-        d = {i: getattr(message, i) for i in keys}
+        d = {
+            i: (
+                getattr(message, i) if i != "date" else message.get_date("%d/%m/%Y %H:%M:%S")
+            ) for i in keys
+        }
         self.data[uid] = d
         self.base[uid] = d
 
@@ -269,7 +274,7 @@ class MainWindow(QtWidgets.QMainWindow):
         vk_action.setStatusTip('Open our VK page')
         vk_action.triggered.connect(lambda x: self.open_page("vk.com/ideasoft_spb"))
         self.clear_data_action = QtWidgets.QAction("Clear data ({})".format(
-            utils.get_size(os.path.getsize('data.json'))
+            utils.get_size(os.path.getsize(DATA_PATH))
         ), self)
         self.clear_data_action.triggered.connect(self.clear_data)
 
@@ -315,7 +320,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.tableview.horizontalHeader().setSectionResizeMode(
             QtWidgets.QHeaderView.ResizeToContents)
         self.tableview.verticalHeader().hide()
-        self.tableview.doubleClicked.connect(self.row_clicked)
+        self.tableview.doubleClicked.connect(self.open_message)
 
         self.main_widget = QtWidgets.QWidget()
 
@@ -436,11 +441,12 @@ class MainWindow(QtWidgets.QMainWindow):
             for i in row:
                 i.setBackground(QtGui.QBrush(QtGui.QColor("#EBDCCB")))
         if 'STARRED' in message['labels']:
-            row.append(QtGui.QStandardItem("\U0001F31F"))
-            row[-1].setTextAlignment(QtCore.Qt.AlignCenter)
+            row.append(QtGui.QStandardItem(""))
+            row[-1].setBackground(QtGui.QBrush(QtGui.QColor("#ffb700")))
         self.model.appendRow(row)
 
-    def row_clicked(self, index: QtCore.QModelIndex):
+    def open_message(self, index: QtCore.QModelIndex) -> None:
+        """Take index of double-clicked table row and open a new message window."""
         window = MessageWindow(list(self.data.keys())[index.row()], parent=self)
         window.show()
 
@@ -453,7 +459,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def refresh_data_size(self):
         self.clear_data_action.setText(
             "Clear data ({})".format(
-                utils.get_size(os.path.getsize('data.json')))
+                utils.get_size(os.path.getsize(DATA_PATH)))
             )
 
     def closeEvent(self, event):
@@ -470,7 +476,6 @@ class MainWindow(QtWidgets.QMainWindow):
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     window = MainWindow()
-    window.resize(400, 400)
     window.setWindowIcon(QtGui.QIcon("icons/logo.png"))
     window.showMaximized()
     window.show()
